@@ -1,6 +1,7 @@
-// Önbelleğe alınacak dosyaların listesi
-const CACHE_NAME = 'caykahve-cache-v2'; // Sürümü artırarak eski önbelleği geçersiz kılıyoruz
-const REPO_NAME = '/caymikahvemi'; // GitHub repo adını buraya ekliyoruz
+// Daha Sağlam Service Worker Kodu (v3)
+
+const CACHE_NAME = 'caykahve-cache-v3'; // Sürümü artırarak eski önbelleği geçersiz kılıyoruz
+const REPO_NAME = '/caymikahvemi';
 
 const urlsToCache = [
   REPO_NAME + '/',
@@ -9,18 +10,28 @@ const urlsToCache = [
   REPO_NAME + '/app.js',
   REPO_NAME + '/manifest.json',
   REPO_NAME + '/icons/icon-192x192.png',
+  REPO_NAME + '/icons/icon-512x512.png',
   'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css',
   'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'
 ];
 
-// Yükleme (install) olayı: Önbelleği oluştur ve dosyaları ekle
+// Yükleme (install) olayı: Önbelleği oluştur ve dosyaları tek tek ekle
 self.addEventListener('install', event => {
   event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then(cache => {
-        console.log('Opened cache');
-        return cache.addAll(urlsToCache);
-      })
+    (async () => {
+      const cache = await caches.open(CACHE_NAME);
+      console.log('Opened cache. Caching files one by one...');
+      
+      // 'addAll' yerine, dosyaları tek tek önbelleğe alıyoruz.
+      // Bu sayede biri başarısız olursa diğerleri etkilenmez.
+      for (const url of urlsToCache) {
+        try {
+          await cache.add(url);
+        } catch (error) {
+          console.warn(`Failed to cache ${url}:`, error);
+        }
+      }
+    })()
   );
   self.skipWaiting();
 });
@@ -47,13 +58,7 @@ self.addEventListener('fetch', event => {
   event.respondWith(
     caches.match(event.request)
       .then(response => {
-        // Önbellekte varsa, önbellekten yanıt ver
-        if (response) {
-          return response;
-        }
-        // Önbellekte yoksa, ağdan getirmeyi dene
-        return fetch(event.request);
-      }
-    )
+        return response || fetch(event.request);
+      })
   );
 });
