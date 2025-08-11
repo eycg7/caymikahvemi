@@ -2,7 +2,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // --- CONFIGURATION ---
   // Bu URL'yi README dosyasındaki Adım 1'de oluşturduğunuz
   // kendi Cloudflare Worker adresinizle değiştirin.
-  const API_PROXY_URL = 'https://red-base-2785.ercan-yagci.workers.dev/'; // <-- DEĞİŞTİRİLECEK
+  const API_PROXY_URL = 'https://red-base-2785.ercan-yagci.workers.dev/'; // <-- BU ADRES DOĞRU
 
   const DEFAULT_LOCATION = { lat: 41.015137, lon: 28.979530 }; // İstanbul, Eminönü
   const RATING_WEIGHT = 0.4; // Puanlamanın ağırlığı (%40)
@@ -218,7 +218,8 @@ document.addEventListener('DOMContentLoaded', () => {
   // --- PWA Service Worker ---
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-      navigator.serviceWorker.register('/sw.js')
+      // DÜZELTME: Service Worker yolunu repo adını içerecek şekilde güncelledik.
+      navigator.serviceWorker.register('/caymikahvemi/sw.js')
         .then(registration => console.log('ServiceWorker registered: ', registration))
         .catch(registrationError => console.log('ServiceWorker registration failed: ', registrationError));
     });
