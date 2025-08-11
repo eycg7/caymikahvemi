@@ -4,13 +4,13 @@
   "description": "Yakınındaki en iyi çay ve kahve mekanlarını anında bul.",
   "icons": [
     {
-      "src": "/caymikahvemi/icons/icon-192x192.png",
+      "src": "/caymikahvemi/icons/icon-192.png",
       "type": "image/png",
       "sizes": "192x192",
       "purpose": "any maskable"
     },
     {
-      "src": "/caymikahvemi/icons/icon-512x512.png",
+      "src": "/caymikahvemi/icons/icon-512.png",
       "type": "image/png",
       "sizes": "512x512"
     }
