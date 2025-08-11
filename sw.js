@@ -1,6 +1,6 @@
-// Daha Sağlam Service Worker Kodu (v4 - Dosya Adları Düzeltildi)
+// Daha Sağlam Service Worker Kodu (v5 - Favicon Eklendi)
 
-const CACHE_NAME = 'caykahve-cache-v4'; // Sürümü artırarak eski önbelleği geçersiz kılıyoruz
+const CACHE_NAME = 'caykahve-cache-v5'; // Sürümü artırarak eski önbelleği geçersiz kılıyoruz
 const REPO_NAME = '/caymikahvemi';
 
 const urlsToCache = [
@@ -9,7 +9,7 @@ const urlsToCache = [
   REPO_NAME + '/style.css',
   REPO_NAME + '/app.js',
   REPO_NAME + '/manifest.json',
-  // --- DOSYA ADLARI DÜZELTİLDİ ---
+  REPO_NAME + '/favicon.ico', // <-- FAVICON EKLENDİ
   REPO_NAME + '/icons/icon-192.png', 
   REPO_NAME + '/icons/icon-512.png',
   'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css',
@@ -23,8 +23,6 @@ self.addEventListener('install', event => {
       const cache = await caches.open(CACHE_NAME);
       console.log('Opened cache. Caching files one by one...');
       
-      // 'addAll' yerine, dosyaları tek tek önbelleğe alıyoruz.
-      // Bu sayede biri başarısız olursa diğerleri etkilenmez.
       for (const url of urlsToCache) {
         try {
           await cache.add(url);
@@ -63,3 +61,4 @@ self.addEventListener('fetch', event => {
       })
   );
 });
+// --- app.js ---
