@@ -1,12 +1,9 @@
 document.addEventListener('DOMContentLoaded', () => {
   // --- CONFIGURATION ---
-  // Bu URL'yi README dosyasındaki Adım 1'de oluşturduğunuz
-  // kendi Cloudflare Worker adresinizle değiştirin.
-  const API_PROXY_URL = 'https://red-base-2785.ercan-yagci.workers.dev/'; // <-- BU ADRES DOĞRU
-
-  const DEFAULT_LOCATION = { lat: 41.015137, lon: 28.979530 }; // İstanbul, Eminönü
-  const RATING_WEIGHT = 0.4; // Puanlamanın ağırlığı (%40)
-  const DISTANCE_WEIGHT = 0.6; // Mesafenin ağırlığı (%60)
+  const API_PROXY_URL = 'https://red-base-2785.ercan-yagci.workers.dev/';
+  const DEFAULT_LOCATION = { lat: 41.015137, lon: 28.979530 };
+  const RATING_WEIGHT = 0.4;
+  const DISTANCE_WEIGHT = 0.6;
 
   // --- UI ELEMENTS ---
   const mapElement = document.getElementById('map');
@@ -48,23 +45,16 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // --- CORE LOGIC ---
-  
-  /**
-   * Kullanıcının coğrafi konumunu alır.
-   * @returns {Promise<{lat: number, lon: number}>} Konum nesnesi
-   */
   function getUserLocation() {
     return new Promise((resolve, reject) => {
       if (!navigator.geolocation) {
         showNotification('Tarayıcınız konum servisini desteklemiyor.', true);
         return reject(new Error('Geolocation not supported.'));
       }
-
       const timer = setTimeout(() => {
         showNotification('Konum alınamadı, varsayılan konum kullanılıyor.');
         resolve(DEFAULT_LOCATION);
-      }, 6000); // 6 saniye zaman aşımı
-
+      }, 6000);
       navigator.geolocation.getCurrentPosition(
         position => {
           clearTimeout(timer);
@@ -77,25 +67,16 @@ document.addEventListener('DOMContentLoaded', () => {
           clearTimeout(timer);
           showNotification('Konum izni reddedildi, varsayılan konum kullanılıyor.', true);
           console.error(`Geolocation error: ${error.message}`);
-          resolve(DEFAULT_LOCATION); // Hata durumunda varsayılan konuma dön
+          resolve(DEFAULT_LOCATION);
         },
         { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
       );
     });
   }
 
-  /**
-   * Foursquare'den mekanları proxy üzerinden arar.
-   * @param {string} query - "tea" veya "coffee"
-   * @param {{lat: number, lon: number}} location - Kullanıcının konumu
-   * @returns {Promise<Array>} Mekanların listesi
-   */
   async function searchPlaces(query, location) {
     showLoader(true);
     try {
-      if (!API_PROXY_URL.includes('workers.dev')) {
-         throw new Error("Lütfen app.js dosyasındaki API_PROXY_URL'yi kendi proxy adresinizle güncelleyin.");
-      }
       const response = await fetch(API_PROXY_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -105,7 +86,6 @@ document.addEventListener('DOMContentLoaded', () => {
           lon: location.lon
         })
       });
-
       if (!response.ok) {
         throw new Error(`API hatası: ${response.statusText}`);
       }
@@ -120,42 +100,24 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  /**
-   * Mekanları puana ve mesafeye göre sıralar.
-   * @param {Array} places - Foursquare'den gelen mekan listesi
-   * @returns {Array} Puanlanmış ve sıralanmış mekan listesi
-   */
   function rankPlaces(places) {
     if (!places || places.length === 0) return [];
-
     const maxDistance = Math.max(...places.map(p => p.distance), 1);
-
     return places
       .map(place => {
-        // Normalizasyon: Değerleri 0-1 arasına getirme
-        const normalizedRating = (place.rating || 5) / 10; // Puan yoksa ortalama 5 ver
+        const normalizedRating = (place.rating || 5) / 10;
         const normalizedDistance = 1 - (place.distance / maxDistance);
-
-        // Ağırlıklı puanlama
         const score = (normalizedRating * RATING_WEIGHT) + (normalizedDistance * DISTANCE_WEIGHT);
-        
         return { ...place, score };
       })
-      .sort((a, b) => b.score - a.score); // En yüksek puandan düşüğe sırala
+      .sort((a, b) => b.score - a.score);
   }
 
-  /**
-   * Haritadaki işaretçileri temizler ve yenilerini ekler.
-   * @param {Array} places - Gösterilecek mekanların listesi
-   * @param {{lat: number, lon: number}} userLocation - Kullanıcının konumu
-   */
   function renderPlaces(places, userLocation) {
-    // Önceki işaretçileri temizle
     markers.forEach(marker => map.removeLayer(marker));
     markers = [];
     if (userMarker) map.removeLayer(userMarker);
 
-    // Kullanıcı konumunu gösteren mavi daire
     userMarker = L.circle([userLocation.lat, userLocation.lon], {
         color: '#007bff',
         fillColor: '#007bff',
@@ -171,16 +133,25 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const latLngs = [[userLocation.lat, userLocation.lon]];
 
-    places.slice(0, 10).forEach((place, index) => { // En iyi 10 mekanı göster
+    places.slice(0, 10).forEach((place, index) => {
       const location = {
         lat: place.geocodes.main.latitude,
         lon: place.geocodes.main.longitude
       };
       latLngs.push([location.lat, location.lon]);
       
+      // --- YENİ: Açık/Kapalı durumunu belirle ---
+      let statusHtml = '';
+      if (place.closed_bucket === 'LIKELY_CLOSED' || place.closed_bucket === 'VERY_LIKELY_CLOSED') {
+        statusHtml = '🔴 <b>Durum:</b> Kapalı';
+      } else {
+        statusHtml = '🟢 <b>Durum:</b> Açık';
+      }
+
       const popupContent = `
-        <div style="font-family: sans-serif; line-height: 1.4;">
+        <div style="font-family: sans-serif; line-height: 1.5;">
           <strong style="font-size: 1.1em;">${index + 1}. ${place.name}</strong><br>
+          ${statusHtml}<br>
           ⭐ <b>Puan:</b> ${place.rating ? place.rating.toFixed(1) : 'N/A'} / 10<br>
           🚶 <b>Mesafe:</b> ${place.distance}m<br>
           <a href="https://www.google.com/maps?daddr=${location.lat},${location.lon}" target="_blank">Yol Tarifi Al</a>
@@ -191,7 +162,6 @@ document.addEventListener('DOMContentLoaded', () => {
       markers.push(marker);
     });
 
-    // Haritayı tüm işaretçileri gösterecek şekilde ayarla
     map.fitBounds(L.latLngBounds(latLngs), { padding: [50, 50] });
   }
 
@@ -218,7 +188,6 @@ document.addEventListener('DOMContentLoaded', () => {
   // --- PWA Service Worker ---
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-      // DÜZELTME: Service Worker yolunu repo adını içerecek şekilde güncelledik.
       navigator.serviceWorker.register('/caymikahvemi/sw.js')
         .then(registration => console.log('ServiceWorker registered: ', registration))
         .catch(registrationError => console.log('ServiceWorker registration failed: ', registrationError));
