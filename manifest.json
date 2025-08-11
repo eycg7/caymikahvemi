@@ -1,0 +1,22 @@
+{
+  "short_name": "ÇayKahve",
+  "name": "Çay Kahve Bulucu",
+  "description": "Yakınındaki en iyi çay ve kahve mekanlarını anında bul.",
+  "icons": [
+    {
+      "src": "icons/icon-192x192.png",
+      "type": "image/png",
+      "sizes": "192x192",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icons/icon-512x512.png",
+      "type": "image/png",
+      "sizes": "512x512"
+    }
+  ],
+  "start_url": "/index.html",
+  "display": "standalone",
+  "theme_color": "#ff5722",
+  "background_color": "#f4f4f4"
+}
