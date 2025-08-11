@@ -1,6 +1,6 @@
-// Daha Sağlam Service Worker Kodu (v3)
+// Daha Sağlam Service Worker Kodu (v4 - Dosya Adları Düzeltildi)
 
-const CACHE_NAME = 'caykahve-cache-v3'; // Sürümü artırarak eski önbelleği geçersiz kılıyoruz
+const CACHE_NAME = 'caykahve-cache-v4'; // Sürümü artırarak eski önbelleği geçersiz kılıyoruz
 const REPO_NAME = '/caymikahvemi';
 
 const urlsToCache = [
@@ -9,8 +9,9 @@ const urlsToCache = [
   REPO_NAME + '/style.css',
   REPO_NAME + '/app.js',
   REPO_NAME + '/manifest.json',
-  REPO_NAME + '/icons/icon-192x192.png',
-  REPO_NAME + '/icons/icon-512x512.png',
+  // --- DOSYA ADLARI DÜZELTİLDİ ---
+  REPO_NAME + '/icons/icon-192.png', 
+  REPO_NAME + '/icons/icon-512.png',
   'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css',
   'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'
 ];
