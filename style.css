@@ -4,7 +4,7 @@
   --background-color: #f4f4f4;
   --button-bg: #ffffff;
   --button-hover-bg: #e9e9e9;
-  --accent-color: #ff5722;
+  --accent-color: #8B4513; /* Kahverengi */
 }
 
 * {
@@ -21,10 +21,10 @@ body {
   display: flex;
   flex-direction: column;
   height: 100vh;
-  overflow: hidden; /* Sayfanın kaymasını engelle */
+  overflow: hidden;
 }
 
-/* Header ve Butonlar */
+/* Header ve Kontroller */
 header {
   text-align: center;
   padding: 1rem;
@@ -35,13 +35,14 @@ header {
 
 h1 {
   font-size: 1.5rem;
-  margin-bottom: 0.75rem;
+  margin-bottom: 1rem;
   font-weight: 600;
 }
 
-#buttons {
+#controls {
   display: flex;
-  justify-content: center;
+  flex-direction: column;
+  align-items: center;
   gap: 1rem;
 }
 
@@ -49,12 +50,14 @@ button {
   font-size: 1.1rem;
   font-weight: 500;
   padding: 0.75rem 1.5rem;
-  border-radius: 50px; /* Tam yuvarlak köşeler */
+  border-radius: 50px;
   border: 1px solid #ddd;
   background: var(--button-bg);
   cursor: pointer;
   transition: all 0.2s ease-in-out;
   box-shadow: 0 2px 5px rgba(0,0,0,0.08);
+  width: 80%;
+  max-width: 300px;
 }
 
 button:hover {
@@ -63,12 +66,57 @@ button:hover {
   box-shadow: 0 4px 8px rgba(0,0,0,0.1);
 }
 
-button:active {
-  transform: translateY(0);
-  box-shadow: 0 2px 5px rgba(0,0,0,0.08);
+/* YENİ: Slider Stilleri */
+#slider-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 90%;
+  max-width: 350px;
+  gap: 10px;
 }
 
-/* Harita Alanı */
+#distance-label {
+  font-weight: 500;
+  min-width: 60px; /* Etiketin boyutunun değişmesini engeller */
+  text-align: left;
+}
+
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 8px;
+  background: #ddd;
+  border-radius: 5px;
+  outline: none;
+  opacity: 0.7;
+  transition: opacity .2s;
+}
+
+input[type="range"]:hover {
+  opacity: 1;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  background: var(--accent-color);
+  cursor: pointer;
+  border-radius: 50%;
+}
+
+input[type="range"]::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  background: var(--accent-color);
+  cursor: pointer;
+  border-radius: 50%;
+}
+
+/* Diğer Stiller... */
 main {
   flex-grow: 1;
   position: relative;
@@ -80,7 +128,6 @@ main {
   background-color: #e0e0e0;
 }
 
-/* Yükleme Animasyonu */
 #loader {
   position: fixed;
   inset: 0;
@@ -115,7 +162,6 @@ main {
   }
 }
 
-/* Bildirim Mesajı */
 #notification {
     position: fixed;
     bottom: 20px;
@@ -140,7 +186,6 @@ main {
     background-color: #d32f2f;
 }
 
-/* Footer */
 footer {
   text-align: center;
   padding: 0.5rem;

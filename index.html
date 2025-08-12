@@ -23,9 +23,14 @@
 <body>
   <header>
     <h1>En Yakın Kafe</h1>
-    <div id="buttons">
-      <!-- Sadece tek bir buton var -->
-      <button id="btn-find-cafe">☕ En Yakın Kafeleri Bul</button>
+    <div id="controls">
+      <!-- YENİ: Mesafe Ayarı (Slider) -->
+      <div id="slider-container">
+        <label for="distance-slider">Mesafe:</label>
+        <input type="range" id="distance-slider" min="0" max="4" value="1" step="1">
+        <span id="distance-label">500 m</span>
+      </div>
+      <button id="btn-find-cafe">☕ Kafeleri Bul</button>
     </div>
   </header>
 
