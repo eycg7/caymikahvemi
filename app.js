@@ -2,6 +2,8 @@ document.addEventListener('DOMContentLoaded', () => {
   // --- CONFIGURATION ---
   const API_PROXY_URL = 'https://red-base-2785.ercan-yagci.workers.dev/';
   const DEFAULT_LOCATION = { lat: 39.925533, lon: 32.866287 }; // Ankara, Kızılay
+  // YENİ: Slider için mesafe adımları (metre cinsinden)
+  const DISTANCE_STEPS = [200, 500, 1000, 2000, 5000];
 
   // --- UI ELEMENTS (Yeni Tasarıma Göre Güncellendi) ---
   const mapElement = document.getElementById('map');
@@ -9,10 +11,12 @@ document.addEventListener('DOMContentLoaded', () => {
   const notificationElement = document.getElementById('notification');
   const findBtn = document.getElementById('findBtn');
   const radiusSlider = document.getElementById('radius');
+  const ticksContainer = document.querySelector('.ticks');
 
   let map;
   let markers = [];
   let userMarker;
+  let searchRadiusCircle; // YENİ: Arama dairesini tutmak için değişken
 
   // --- INITIALIZATION ---
   function initMap(location) {
@@ -107,11 +111,14 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
   
-  function renderPlaces(places, userLocation) {
+  function renderPlaces(places, userLocation, radius) {
+    // Önceki işaretçileri ve daireyi temizle
     markers.forEach(marker => map.removeLayer(marker));
     markers = [];
     if (userMarker) map.removeLayer(userMarker);
+    if (searchRadiusCircle) map.removeLayer(searchRadiusCircle);
 
+    // Kullanıcı konumunu göster
     userMarker = L.circle([userLocation.lat, userLocation.lon], {
         color: '#007bff',
         fillColor: '#007bff',
@@ -119,13 +126,23 @@ document.addEventListener('DOMContentLoaded', () => {
         radius: 50
     }).addTo(map).bindPopup('<b>Siz buradasınız</b>');
     
+    // YENİ: Arama yarıçapını gösteren daireyi çiz
+    searchRadiusCircle = L.circle([userLocation.lat, userLocation.lon], {
+        radius: radius,
+        color: '#b46a37',
+        fillColor: '#b46a37',
+        fillOpacity: 0.1,
+        weight: 1
+    }).addTo(map);
+
     if (places.length === 0) {
       showNotification('Bu mesafede uygun bir kafe bulunamadı.');
-      map.setView([userLocation.lat, userLocation.lon], 14);
+      // Haritayı arama alanına sığdır
+      map.fitBounds(searchRadiusCircle.getBounds());
       return;
     }
 
-    const latLngs = [[userLocation.lat, userLocation.lon]];
+    const latLngs = [];
 
     const uniquePlaces = [];
     const placeIds = new Set();
@@ -156,7 +173,8 @@ document.addEventListener('DOMContentLoaded', () => {
       markers.push(marker);
     });
 
-    map.fitBounds(L.latLngBounds(latLngs), { padding: [50, 50] });
+    // Haritayı arama alanına sığdır
+    map.fitBounds(searchRadiusCircle.getBounds(), { padding: [20, 20] });
   }
 
   // --- EVENT LISTENERS ---
@@ -172,9 +190,10 @@ document.addEventListener('DOMContentLoaded', () => {
       const location = await getUserLocation();
       initMap(location);
 
-      const radius = radiusSlider.value; // Slider'dan değeri doğrudan al
+      // Slider'ın index değerinden gerçek mesafeyi al
+      const radius = DISTANCE_STEPS[radiusSlider.value];
       const places = await searchPlaces(location, radius);
-      renderPlaces(places, location);
+      renderPlaces(places, location, radius);
 
     } catch(error) {
         showNotification(error.message, true);
@@ -184,14 +203,25 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
   
-  // Slider ilerleme çubuğunu güncelleyen kod
-  const updateProgress = () => {
-    const min = parseFloat(radiusSlider.min), max = parseFloat(radiusSlider.max), val = parseFloat(radiusSlider.value);
-    const pct = ((val - min) / (max - min)) * 100;
+  // Slider ilerleme çubuğunu ve aktif etiketi güncelleyen kod
+  const updateSliderUI = () => {
+    const value = parseInt(radiusSlider.value);
+    const min = parseInt(radiusSlider.min);
+    const max = parseInt(radiusSlider.max);
+    
+    // Yüzdeyi hesapla
+    const pct = ((value - min) / (max - min)) * 100;
     radiusSlider.style.setProperty('--progress', pct + '%');
+
+    // Etiketleri vurgula
+    const ticks = ticksContainer.querySelectorAll('span');
+    ticks.forEach((span, index) => {
+      span.style.fontWeight = index === value ? 'bold' : 'normal';
+      span.style.color = index === value ? '#3a2e2a' : '#6b5b53';
+    });
   };
-  radiusSlider.addEventListener('input', updateProgress);
-  updateProgress(); // Sayfa ilk yüklendiğinde de çalıştır
+  radiusSlider.addEventListener('input', updateSliderUI);
+  updateSliderUI(); // Sayfa ilk yüklendiğinde de çalıştır
 
   findBtn.addEventListener('click', handleFind);
 
@@ -205,7 +235,5 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // --- INITIAL LOAD ---
-  // Haritayı başlangıçta göstermeyip, arama sonrası görünür kılabiliriz.
-  // initMap(DEFAULT_LOCATION); 
-  // showNotification('Yakınındaki kafeleri bulmak için butona dokun.', false, 4000);
+  // Haritayı başlangıçta gösterme
 });
