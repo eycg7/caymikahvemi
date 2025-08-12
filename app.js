@@ -2,16 +2,13 @@ document.addEventListener('DOMContentLoaded', () => {
   // --- CONFIGURATION ---
   const API_PROXY_URL = 'https://red-base-2785.ercan-yagci.workers.dev/';
   const DEFAULT_LOCATION = { lat: 39.925533, lon: 32.866287 }; // Ankara, Kızılay
-  // YENİ: Slider için mesafe adımları (metre cinsinden)
-  const DISTANCE_STEPS = [200, 500, 1000, 2500, 5000];
 
-  // --- UI ELEMENTS ---
+  // --- UI ELEMENTS (Yeni Tasarıma Göre Güncellendi) ---
   const mapElement = document.getElementById('map');
   const loaderElement = document.getElementById('loader');
   const notificationElement = document.getElementById('notification');
-  const btnFindCafe = document.getElementById('btn-find-cafe');
-  const distanceSlider = document.getElementById('distance-slider');
-  const distanceLabel = document.getElementById('distance-label');
+  const findBtn = document.getElementById('findBtn');
+  const radiusSlider = document.getElementById('radius');
 
   let map;
   let markers = [];
@@ -88,7 +85,7 @@ document.addEventListener('DOMContentLoaded', () => {
         body: JSON.stringify({
           lat: location.lat,
           lon: location.lon,
-          radius: radius // YENİ: Seçilen mesafeyi gönderiyoruz
+          radius: radius
         })
       });
       
@@ -175,8 +172,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const location = await getUserLocation();
       initMap(location);
 
-      // YENİ: Slider'dan mevcut mesafe değerini al
-      const radius = DISTANCE_STEPS[distanceSlider.value];
+      const radius = radiusSlider.value; // Slider'dan değeri doğrudan al
       const places = await searchPlaces(location, radius);
       renderPlaces(places, location);
 
@@ -188,17 +184,16 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
   
-  // YENİ: Slider hareket ettikçe etiketi güncelle
-  distanceSlider.addEventListener('input', (event) => {
-    const selectedDistance = DISTANCE_STEPS[event.target.value];
-    if (selectedDistance >= 1000) {
-      distanceLabel.textContent = `${selectedDistance / 1000} km`;
-    } else {
-      distanceLabel.textContent = `${selectedDistance} m`;
-    }
-  });
+  // Slider ilerleme çubuğunu güncelleyen kod
+  const updateProgress = () => {
+    const min = parseFloat(radiusSlider.min), max = parseFloat(radiusSlider.max), val = parseFloat(radiusSlider.value);
+    const pct = ((val - min) / (max - min)) * 100;
+    radiusSlider.style.setProperty('--progress', pct + '%');
+  };
+  radiusSlider.addEventListener('input', updateProgress);
+  updateProgress(); // Sayfa ilk yüklendiğinde de çalıştır
 
-  btnFindCafe.addEventListener('click', handleFind);
+  findBtn.addEventListener('click', handleFind);
 
   // --- PWA Service Worker ---
   if ('serviceWorker' in navigator) {
@@ -210,6 +205,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // --- INITIAL LOAD ---
-  initMap(DEFAULT_LOCATION);
-  showNotification('Yakınındaki kafeleri bulmak için butona dokun.', false, 4000);
+  // Haritayı başlangıçta göstermeyip, arama sonrası görünür kılabiliriz.
+  // initMap(DEFAULT_LOCATION); 
+  // showNotification('Yakınındaki kafeleri bulmak için butona dokun.', false, 4000);
 });
