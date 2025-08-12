@@ -1,9 +1,6 @@
 document.addEventListener('DOMContentLoaded', () => {
-  // --- UYARI: BU BİR TEST SÜRÜMÜDÜR ---
-  // API anahtarı bu dosyada herkese görünür durumdadır.
-  // Bu sürüm sadece sorunun kaynağını teşhis etmek içindir.
-  const FSQ_API_KEY = 'Z3105DXLJEFEVEC4KJBBIRUKGXBVCLKH2V4FZI1JJNQXF0CN'; // <-- LÜTFEN YENİ VE AKTİF ANAHTARINIZI BURAYA GİRİN
-
+  // --- CONFIGURATION ---
+  const API_PROXY_URL = 'https://red-base-2785.ercan-yagci.workers.dev/';
   const DEFAULT_LOCATION = { lat: 39.925533, lon: 32.866287 }; // Ankara, Kızılay
   const RATING_WEIGHT = 0.4;
   const DISTANCE_WEIGHT = 0.6;
@@ -81,36 +78,26 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // --- DEĞİŞTİRİLDİ: Foursquare'e doğrudan istek atılıyor ---
   async function searchPlaces(query, location) {
     showLoader(true);
-    
-    const searchParams = new URLSearchParams({
-        query: query,
-        ll: `${location.lat},${location.lon}`,
-        radius: 3000,
-        categories: '13032,13035',
-        fields: 'fsq_id,name,geocodes,rating,distance,closed_bucket',
-        sort: 'RELEVANCE',
-        limit: 30
-    });
-
-    const fsq_url = `https://api.foursquare.com/v3/places/search?${searchParams.toString()}`;
-
     try {
-      const response = await fetch(fsq_url, {
-        method: 'GET', // Metod GET olarak değiştirildi
-        headers: { 
-            'Content-Type': 'application/json',
-            'Authorization': FSQ_API_KEY // Anahtar doğrudan başlığa eklendi
-        }
+      const response = await fetch(API_PROXY_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          query: query,
+          lat: location.lat,
+          lon: location.lon
+        })
       });
       
       const data = await response.json();
-      console.log('Doğrudan Foursquare Yanıtı:', data);
 
-      if (!response.ok || data.message) {
-        throw new Error(data.message || 'Bilinmeyen Foursquare hatası');
+      // --- YENİ: Hata ayıklama için gelen veriyi konsola yazdır ---
+      console.log('Foursquare API Yanıtı:', data);
+
+      if (data.error) {
+        throw new Error(data.message);
       }
       
       return data.results || [];
@@ -150,6 +137,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }).addTo(map).bindPopup('<b>Siz buradasınız</b>');
     
     if (places.length === 0) {
+      // Bu mesaj sadece API'den boş liste geldiğinde gösterilir.
       showNotification('Yakınlarda uygun bir mekan bulunamadı.');
       map.setView([userLocation.lat, userLocation.lon], 14);
       return;
@@ -187,6 +175,7 @@ document.addEventListener('DOMContentLoaded', () => {
     map.fitBounds(L.latLngBounds(latLngs), { padding: [50, 50] });
   }
 
+  // --- YENİ: Daha akıllı olay yöneticisi ---
   async function handleFind(query) {
     showLoader(true);
     try {
@@ -208,6 +197,7 @@ document.addEventListener('DOMContentLoaded', () => {
   btnCoffee.addEventListener('click', () => handleFind('coffee'));
   btnTea.addEventListener('click', () => handleFind('tea'));
 
+  // --- PWA Service Worker ---
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
       navigator.serviceWorker.register('/caymikahvemi/sw.js')
@@ -216,6 +206,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  // --- INITIAL LOAD ---
   initMap(DEFAULT_LOCATION);
   showNotification('Çay mı, kahve mi? Konumunuzu bulmak için birine dokunun.', false, 4000);
 });

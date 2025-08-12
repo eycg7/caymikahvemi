@@ -2,7 +2,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // --- UYARI: BU BİR TEST SÜRÜMÜDÜR ---
   // API anahtarı bu dosyada herkese görünür durumdadır.
   // Bu sürüm sadece sorunun kaynağını teşhis etmek içindir.
-  const FSQ_API_KEY = 'Z3105DXLJEFEVEC4KJBBIRUKGXBVCLKH2V4FZI1JJNQXF0CN'; // <-- LÜTFEN YENİ VE AKTİF ANAHTARINIZI BURAYA GİRİN
+  const FSQ_API_KEY = 'YOUR_FOURSQUARE_API_KEY'; // <-- LÜTFEN YENİ VE AKTİF ANAHTARINIZI BURAYA GİRİN
 
   const DEFAULT_LOCATION = { lat: 39.925533, lon: 32.866287 }; // Ankara, Kızılay
   const RATING_WEIGHT = 0.4;
