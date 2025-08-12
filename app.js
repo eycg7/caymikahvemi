@@ -32,7 +32,7 @@ document.addEventListener('DOMContentLoaded', () => {
     loaderElement.classList.toggle('hidden', !show);
   }
 
-  function showNotification(message, isError = false, duration = 5000) {
+  function showNotification(message, isError = false, duration = 6000) {
     notificationElement.textContent = message;
     notificationElement.className = 'notification show';
     if (isError) {
@@ -60,7 +60,7 @@ document.addEventListener('DOMContentLoaded', () => {
           let errorMessage = 'Konum alınamadı.';
           switch (error.code) {
             case error.PERMISSION_DENIED:
-              errorMessage = 'Konum izni reddedildi. Lütfen tarayıcı ayarlarından izin verin.';
+              errorMessage = 'Konum izni reddedildi. Lütfen tarayıcı ayarlarından bu site için konuma izin verin.';
               break;
             case error.POSITION_UNAVAILABLE:
               errorMessage = 'Konum bilgisi mevcut değil.';
@@ -83,7 +83,7 @@ document.addEventListener('DOMContentLoaded', () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          query: query, // 'cafe' veya 'tea_room' olarak gönderilecek
+          query: query,
           lat: location.lat,
           lon: location.lon
         })
@@ -107,7 +107,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
   
-  // OSM'den gelen veriyi haritada göstermek için fonksiyon
   function renderPlaces(places, userLocation) {
     markers.forEach(marker => map.removeLayer(marker));
     markers = [];
@@ -128,8 +127,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const latLngs = [[userLocation.lat, userLocation.lon]];
 
-    places.slice(0, 20).forEach((place, index) => { // En yakın 20 mekanı göster
-      // OSM verisi Foursquare'den farklıdır, konumu doğru yerden almalıyız.
+    const uniquePlaces = [];
+    const placeIds = new Set();
+
+    places.forEach(place => {
+      if (!placeIds.has(place.id)) {
+        uniquePlaces.push(place);
+        placeIds.add(place.id);
+      }
+    });
+
+    uniquePlaces.slice(0, 30).forEach((place) => {
       const location = {
         lat: place.lat || place.center.lat,
         lon: place.lon || place.center.lon
@@ -151,19 +159,29 @@ document.addEventListener('DOMContentLoaded', () => {
     map.fitBounds(L.latLngBounds(latLngs), { padding: [50, 50] });
   }
 
-  // --- EVENT LISTENERS ---
+  // --- YENİ VE SAĞLAMLAŞTIRILMIŞ OLAY YÖNETİCİSİ ---
   async function handleFind(query) {
     showLoader(true);
     try {
-        const location = await getUserLocation();
-        initMap(location);
-        // OSM'in anladığı etiketleri gönderiyoruz: 'cafe' veya 'tea_room'
-        const osmQuery = query === 'coffee' ? 'cafe' : 'tea_room';
-        const places = await searchPlaces(osmQuery, location);
-        renderPlaces(places, location);
+      // 1. Önce izin durumunu kontrol et
+      const permissionStatus = await navigator.permissions.query({ name: 'geolocation' });
+      
+      if (permissionStatus.state === 'denied') {
+        throw new Error('Konum izni reddedilmiş. Lütfen tarayıcı ayarlarından izin verin.');
+      }
+      
+      // 2. İzin varsa veya sorulacaksa, konumu al
+      const location = await getUserLocation();
+      initMap(location);
+
+      // 3. Mekanları ara
+      const osmQuery = query === 'coffee' ? 'cafe' : 'tea_room';
+      const places = await searchPlaces(osmQuery, location);
+      renderPlaces(places, location);
+
     } catch(error) {
         showNotification(error.message, true);
-        initMap(DEFAULT_LOCATION);
+        initMap(DEFAULT_LOCATION); // Hata durumunda varsayılan konumu göster
     } finally {
         showLoader(false);
     }
@@ -183,5 +201,5 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // --- INITIAL LOAD ---
   initMap(DEFAULT_LOCATION);
-  showNotification('Çay mı, kahve mi? Konumunuzu bulmak için birine dokunun.', false, 4000);
+  showNotification('Yakınındaki mekanları bulmak için bir butona dokun.', false, 4000);
 });

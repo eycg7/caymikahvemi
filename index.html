@@ -3,9 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Çay Kahve Bulucu</title>
-  <meta name="description" content="Yakınındaki en iyi çay ve kahve mekanlarını anında bul.">
-  <meta name="apple-mobile-web-app-capable" content="yes">
+  <title>En Yakın Kafe</title>
+  <meta name="description" content="Tek tıkla yakınındaki en iyi kafeleri anında bul.">
   <link rel="icon" href="/caymikahvemi/favicon.ico" type="image/x-icon">
   
   <!-- PWA & Stil -->
@@ -14,18 +13,19 @@
   <link rel="manifest" href="manifest.json" />
   
   <!-- iOS Ikonları -->
-  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <link rel="apple-touch-icon" href="/caymikahvemi/icons/icon-192.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
-  <meta name="apple-mobile-web-app-title" content="ÇayKahve">
+  <meta name="apple-mobile-web-app-title" content="En Yakın Kafe">
 
 </head>
 <body>
   <header>
-    <h1>Canın ne çekti?</h1>
+    <h1>En Yakın Kafe</h1>
     <div id="buttons">
-      <button id="btn-coffee">☕ Kahve</button>
-      <button id="btn-tea">🍵 Çay</button>
+      <!-- Sadece tek bir buton var -->
+      <button id="btn-find-cafe">☕ En Yakın Kafeleri Bul</button>
     </div>
   </header>
 
@@ -33,20 +33,18 @@
     <div id="map"></div>
   </main>
 
-  <!-- Yükleme ve Bildirim Elementleri -->
   <div id="loader" class="hidden">
     <div class="spinner"></div>
-    <p>En iyi yerler aranıyor...</p>
+    <p>Kafeler aranıyor...</p>
   </div>
   
   <div id="notification" class="hidden"></div>
 
   <footer>
-    <small>Veri Kaynağı: Foursquare</small>
+    <small>Veri Kaynağı: OpenStreetMap</small>
   </footer>
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
   <script src="app.js"></script>
 </body>
 </html>
-
