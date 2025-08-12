@@ -22,7 +22,7 @@ document.addEventListener('DOMContentLoaded', () => {
       map.setView([location.lat, location.lon], 14);
       return;
     }
-    map = L.map(mapElement, { zoomControl: false }).setView([location.lat, location.lon], 14); // Zoom kontrolünü kaldırdık
+    map = L.map(mapElement, { zoomControl: false }).setView([location.lat, location.lon], 14);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '© OpenStreetMap contributors'
     }).addTo(map);
@@ -34,7 +34,7 @@ document.addEventListener('DOMContentLoaded', () => {
     loaderElement.classList.toggle('hidden', !show);
   }
 
-  function showNotification(message, isError = false, duration = 5000) {
+  function showNotification(message, isError = false, duration = 6000) {
     notificationElement.textContent = message;
     notificationElement.className = 'notification show';
     if (isError) {
@@ -62,7 +62,7 @@ document.addEventListener('DOMContentLoaded', () => {
           let errorMessage = 'Konum alınamadı.';
           switch (error.code) {
             case error.PERMISSION_DENIED:
-              errorMessage = 'Konum izni reddedildi. Lütfen tarayıcı ayarlarından izin verin.';
+              errorMessage = 'Konum izni reddedildi. Lütfen tarayıcı ayarlarından bu site için konuma izin verin.';
               break;
             case error.POSITION_UNAVAILABLE:
               errorMessage = 'Konum bilgisi mevcut değil.';
@@ -93,7 +93,9 @@ document.addEventListener('DOMContentLoaded', () => {
       
       const data = await response.json();
 
-      // Worker'dan gelen özel hata mesajını kontrol et
+      // --- YENİ: Hata ayıklama için gelen veriyi konsola yazdır ---
+      console.log('Foursquare API Yanıtı:', data);
+
       if (data.error) {
         throw new Error(data.message);
       }
@@ -102,7 +104,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     } catch (error) {
       console.error('Mekanlar aranırken hata oluştu:', error);
-      // Hata mesajını kullanıcıya göster
       showNotification(`Hata: ${error.message}`, true);
       return [];
     } finally {
@@ -136,6 +137,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }).addTo(map).bindPopup('<b>Siz buradasınız</b>');
     
     if (places.length === 0) {
+      // Bu mesaj sadece API'den boş liste geldiğinde gösterilir.
       showNotification('Yakınlarda uygun bir mekan bulunamadı.');
       map.setView([userLocation.lat, userLocation.lon], 14);
       return;
@@ -173,20 +175,22 @@ document.addEventListener('DOMContentLoaded', () => {
     map.fitBounds(L.latLngBounds(latLngs), { padding: [50, 50] });
   }
 
-  // --- EVENT LISTENERS ---
+  // --- YENİ: Daha akıllı olay yöneticisi ---
   async function handleFind(query) {
     showLoader(true);
     try {
-        const location = await getUserLocation();
-        initMap(location);
-        const places = await searchPlaces(query, location);
+      const location = await getUserLocation();
+      initMap(location);
+      const places = await searchPlaces(query, location);
+      if (places.length > 0) {
         const rankedPlaces = rankPlaces(places);
         renderPlaces(rankedPlaces, location);
+      }
     } catch(error) {
-        showNotification(error.message, true);
-        initMap(DEFAULT_LOCATION); // Hata durumunda varsayılan konumu göster
+      showNotification(error.message, true);
+      initMap(DEFAULT_LOCATION);
     } finally {
-        showLoader(false);
+      showLoader(false);
     }
   }
 
