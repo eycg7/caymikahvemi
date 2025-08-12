@@ -7,8 +7,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const mapElement = document.getElementById('map');
   const loaderElement = document.getElementById('loader');
   const notificationElement = document.getElementById('notification');
-  const btnCoffee = document.getElementById('btn-coffee');
-  const btnTea = document.getElementById('btn-tea');
+  const btnFindCafe = document.getElementById('btn-find-cafe'); // HTML ile uyumlu yeni butonun ID'si
 
   let map;
   let markers = [];
@@ -76,14 +75,14 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  async function searchPlaces(query, location) {
+  async function searchPlaces(location) {
     showLoader(true);
     try {
+      // Worker'a artık bir sorgu göndermiyoruz, çünkü her zaman kafe arayacak.
       const response = await fetch(API_PROXY_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          query: query,
           lat: location.lat,
           lon: location.lon
         })
@@ -120,7 +119,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }).addTo(map).bindPopup('<b>Siz buradasınız</b>');
     
     if (places.length === 0) {
-      showNotification('Yakınlarda uygun bir mekan bulunamadı.');
+      showNotification('Yakınlarda uygun bir kafe bulunamadı.');
       map.setView([userLocation.lat, userLocation.lon], 14);
       return;
     }
@@ -144,7 +143,7 @@ document.addEventListener('DOMContentLoaded', () => {
       };
       latLngs.push([location.lat, location.lon]);
       
-      const name = place.tags && place.tags.name ? place.tags.name : 'İsimsiz Mekan';
+      const name = place.tags && place.tags.name ? place.tags.name : 'İsimsiz Kafe';
 
       const popupContent = `
         <div style="font-family: sans-serif; line-height: 1.5;">
@@ -159,36 +158,37 @@ document.addEventListener('DOMContentLoaded', () => {
     map.fitBounds(L.latLngBounds(latLngs), { padding: [50, 50] });
   }
 
-  // --- YENİ VE SAĞLAMLAŞTIRILMIŞ OLAY YÖNETİCİSİ ---
-  async function handleFind(query) {
+  // --- EVENT LISTENERS ---
+  async function handleFind() {
     showLoader(true);
     try {
-      // 1. Önce izin durumunu kontrol et
       const permissionStatus = await navigator.permissions.query({ name: 'geolocation' });
       
       if (permissionStatus.state === 'denied') {
         throw new Error('Konum izni reddedilmiş. Lütfen tarayıcı ayarlarından izin verin.');
       }
       
-      // 2. İzin varsa veya sorulacaksa, konumu al
       const location = await getUserLocation();
       initMap(location);
 
-      // 3. Mekanları ara
-      const osmQuery = query === 'coffee' ? 'cafe' : 'tea_room';
-      const places = await searchPlaces(osmQuery, location);
+      const places = await searchPlaces(location);
       renderPlaces(places, location);
 
     } catch(error) {
         showNotification(error.message, true);
-        initMap(DEFAULT_LOCATION); // Hata durumunda varsayılan konumu göster
+        initMap(DEFAULT_LOCATION);
     } finally {
         showLoader(false);
     }
   }
+  
+  // Olay dinleyicisini doğru butona bağlıyoruz.
+  if (btnFindCafe) {
+    btnFindCafe.addEventListener('click', handleFind);
+  } else {
+    console.error('Kafe bulma butonu (btn-find-cafe) HTML içinde bulunamadı.');
+  }
 
-  btnCoffee.addEventListener('click', () => handleFind('coffee'));
-  btnTea.addEventListener('click', () => handleFind('tea'));
 
   // --- PWA Service Worker ---
   if ('serviceWorker' in navigator) {
@@ -201,5 +201,5 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // --- INITIAL LOAD ---
   initMap(DEFAULT_LOCATION);
-  showNotification('Yakınındaki mekanları bulmak için bir butona dokun.', false, 4000);
+  showNotification('Yakınındaki kafeleri bulmak için butona dokun.', false, 4000);
 });
