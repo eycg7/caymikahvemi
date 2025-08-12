@@ -1,64 +1,81 @@
-// Daha Sağlam Service Worker Kodu (v5 - Favicon Eklendi)
+// Hata Ayıklama Özellikli Cloudflare Worker Kodu
 
-const CACHE_NAME = 'caykahve-cache-v5'; // Sürümü artırarak eski önbelleği geçersiz kılıyoruz
-const REPO_NAME = '/caymikahvemi';
+const ALLOWED_ORIGIN = 'https://eycg7.github.io';
 
-const urlsToCache = [
-  REPO_NAME + '/',
-  REPO_NAME + '/index.html',
-  REPO_NAME + '/style.css',
-  REPO_NAME + '/app.js',
-  REPO_NAME + '/manifest.json',
-  REPO_NAME + '/favicon.ico', // <-- FAVICON EKLENDİ
-  REPO_NAME + '/icons/icon-192.png', 
-  REPO_NAME + '/icons/icon-512.png',
-  'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css',
-  'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'
-];
+addEventListener('fetch', event => {
+  event.respondWith(handleRequest(event.request))
+})
 
-// Yükleme (install) olayı: Önbelleği oluştur ve dosyaları tek tek ekle
-self.addEventListener('install', event => {
-  event.waitUntil(
-    (async () => {
-      const cache = await caches.open(CACHE_NAME);
-      console.log('Opened cache. Caching files one by one...');
-      
-      for (const url of urlsToCache) {
-        try {
-          await cache.add(url);
-        } catch (error) {
-          console.warn(`Failed to cache ${url}:`, error);
-        }
+async function handleRequest(request) {
+  if (request.method === 'OPTIONS') {
+    return handleOptions(request);
+  }
+  if (request.method === 'POST') {
+    return handlePost(request);
+  }
+  return new Response('Beklenmeyen istek metodu.', { status: 405 });
+}
+
+async function handlePost(request) {
+  const FSQ_API_KEY = 'YOUR_FOURSQUARE_API_KEY'; // <-- LÜTFEN KENDİ API ANAHTARINIZIN DOĞRU OLDUĞUNU TEKRAR KONTROL EDİN
+
+  // --- HATA AYIKLAMA İÇİN TRY...CATCH BLOĞU EKLENDİ ---
+  try {
+    const { lat, lon, query } = await request.json();
+    const searchParams = new URLSearchParams({
+      query: query,
+      ll: `${lat},${lon}`,
+      radius: 3000,
+      categories: '13032,13035',
+      fields: 'fsq_id,name,geocodes,rating,distance,closed_bucket',
+      sort: 'RELEVANCE',
+      limit: 30
+    });
+
+    const fsq_url = `https://api.foursquare.com/v3/places/search?${searchParams.toString()}`;
+
+    const fsqResponse = await fetch(fsq_url, {
+      headers: {
+        'Authorization': FSQ_API_KEY,
+        'Accept': 'application/json'
       }
-    })()
-  );
-  self.skipWaiting();
-});
+    });
 
-// Etkinleştirme (activate) olayı: Eski önbellekleri temizle
-self.addEventListener('activate', event => {
-  const cacheWhitelist = [CACHE_NAME];
-  event.waitUntil(
-    caches.keys().then(cacheNames => {
-      return Promise.all(
-        cacheNames.map(cacheName => {
-          if (cacheWhitelist.indexOf(cacheName) === -1) {
-            return caches.delete(cacheName);
-          }
-        })
-      );
-    })
-  );
-  return self.clients.claim();
-});
+    // Foursquare'den gelen yanıtı kontrol et
+    if (!fsqResponse.ok) {
+      // Eğer yanıt başarılı değilse (401, 403, 500 vb.), Foursquare'in hata mesajını al
+      const errorData = await fsqResponse.json();
+      const errorMessage = errorData.message || `Foursquare API Hatası: ${fsqResponse.status}`;
+      // Bu hatayı uygulamaya geri gönder
+      throw new Error(errorMessage);
+    }
 
-// Getirme (fetch) olayı: İstekleri önbellekten sun, yoksa ağdan getir
-self.addEventListener('fetch', event => {
-  event.respondWith(
-    caches.match(event.request)
-      .then(response => {
-        return response || fetch(event.request);
-      })
-  );
-});
-// --- app.js ---
+    const data = await fsqResponse.json();
+
+    return new Response(JSON.stringify(data), {
+      headers: {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': ALLOWED_ORIGIN
+      },
+    });
+
+  } catch (error) {
+    // Yakalanan hatayı anlamlı bir JSON formatında uygulamaya gönder
+    return new Response(JSON.stringify({ error: true, message: error.message }), {
+      status: 500,
+      headers: {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': ALLOWED_ORIGIN
+      },
+    });
+  }
+}
+
+function handleOptions(request) {
+  const headers = {
+    'Access-Control-Allow-Origin': ALLOWED_ORIGIN,
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type',
+  };
+  return new Response(null, { headers });
+}

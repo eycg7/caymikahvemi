@@ -1,7 +1,7 @@
 document.addEventListener('DOMContentLoaded', () => {
   // --- CONFIGURATION ---
   const API_PROXY_URL = 'https://red-base-2785.ercan-yagci.workers.dev/';
-  const DEFAULT_LOCATION = { lat: 41.015137, lon: 28.979530 };
+  const DEFAULT_LOCATION = { lat: 39.925533, lon: 32.866287 }; // Ankara, Kızılay
   const RATING_WEIGHT = 0.4;
   const DISTANCE_WEIGHT = 0.6;
 
@@ -19,13 +19,14 @@ document.addEventListener('DOMContentLoaded', () => {
   // --- INITIALIZATION ---
   function initMap(location) {
     if (map) {
-        map.setView([location.lat, location.lon], 15);
-        return;
+      map.setView([location.lat, location.lon], 14);
+      return;
     }
-    map = L.map(mapElement).setView([location.lat, location.lon], 15);
+    map = L.map(mapElement, { zoomControl: false }).setView([location.lat, location.lon], 14); // Zoom kontrolünü kaldırdık
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '© OpenStreetMap contributors'
     }).addTo(map);
+    L.control.zoom({ position: 'bottomright' }).addTo(map);
   }
 
   // --- UI HELPERS ---
@@ -33,7 +34,7 @@ document.addEventListener('DOMContentLoaded', () => {
     loaderElement.classList.toggle('hidden', !show);
   }
 
-  function showNotification(message, isError = false, duration = 3000) {
+  function showNotification(message, isError = false, duration = 5000) {
     notificationElement.textContent = message;
     notificationElement.className = 'notification show';
     if (isError) {
@@ -48,28 +49,31 @@ document.addEventListener('DOMContentLoaded', () => {
   function getUserLocation() {
     return new Promise((resolve, reject) => {
       if (!navigator.geolocation) {
-        showNotification('Tarayıcınız konum servisini desteklemiyor.', true);
-        return reject(new Error('Geolocation not supported.'));
+        return reject(new Error('Tarayıcınız konum servisini desteklemiyor.'));
       }
-      const timer = setTimeout(() => {
-        showNotification('Konum alınamadı, varsayılan konum kullanılıyor.');
-        resolve(DEFAULT_LOCATION);
-      }, 6000);
       navigator.geolocation.getCurrentPosition(
         position => {
-          clearTimeout(timer);
           resolve({
             lat: position.coords.latitude,
             lon: position.coords.longitude
           });
         },
         error => {
-          clearTimeout(timer);
-          showNotification('Konum izni reddedildi, varsayılan konum kullanılıyor.', true);
-          console.error(`Geolocation error: ${error.message}`);
-          resolve(DEFAULT_LOCATION);
+          let errorMessage = 'Konum alınamadı.';
+          switch (error.code) {
+            case error.PERMISSION_DENIED:
+              errorMessage = 'Konum izni reddedildi. Lütfen tarayıcı ayarlarından izin verin.';
+              break;
+            case error.POSITION_UNAVAILABLE:
+              errorMessage = 'Konum bilgisi mevcut değil.';
+              break;
+            case error.TIMEOUT:
+              errorMessage = 'Konum alma işlemi zaman aşımına uğradı.';
+              break;
+          }
+          reject(new Error(errorMessage));
         },
-        { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
       );
     });
   }
@@ -86,14 +90,20 @@ document.addEventListener('DOMContentLoaded', () => {
           lon: location.lon
         })
       });
-      if (!response.ok) {
-        throw new Error(`API hatası: ${response.statusText}`);
-      }
+      
       const data = await response.json();
+
+      // Worker'dan gelen özel hata mesajını kontrol et
+      if (data.error) {
+        throw new Error(data.message);
+      }
+      
       return data.results || [];
+
     } catch (error) {
       console.error('Mekanlar aranırken hata oluştu:', error);
-      showNotification('Mekanlar alınamadı. Lütfen tekrar deneyin.', true);
+      // Hata mesajını kullanıcıya göster
+      showNotification(`Hata: ${error.message}`, true);
       return [];
     } finally {
       showLoader(false);
@@ -127,7 +137,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
     if (places.length === 0) {
       showNotification('Yakınlarda uygun bir mekan bulunamadı.');
-      map.setView([userLocation.lat, userLocation.lon], 15);
+      map.setView([userLocation.lat, userLocation.lon], 14);
       return;
     }
 
@@ -140,10 +150,9 @@ document.addEventListener('DOMContentLoaded', () => {
       };
       latLngs.push([location.lat, location.lon]);
       
-      // --- YENİ: Açık/Kapalı durumunu belirle ---
       let statusHtml = '';
       if (place.closed_bucket === 'LIKELY_CLOSED' || place.closed_bucket === 'VERY_LIKELY_CLOSED') {
-        statusHtml = '🔴 <b>Durum:</b> Kapalı';
+        statusHtml = '🔴 <b>Durum:</b> Muhtemelen Kapalı';
       } else {
         statusHtml = '🟢 <b>Durum:</b> Açık';
       }
@@ -157,7 +166,6 @@ document.addEventListener('DOMContentLoaded', () => {
           <a href="https://www.google.com/maps?daddr=${location.lat},${location.lon}" target="_blank">Yol Tarifi Al</a>
         </div>
       `;
-
       const marker = L.marker([location.lat, location.lon]).addTo(map).bindPopup(popupContent);
       markers.push(marker);
     });
@@ -175,8 +183,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const rankedPlaces = rankPlaces(places);
         renderPlaces(rankedPlaces, location);
     } catch(error) {
-        console.error("İşlem sırasında bir hata oluştu:", error);
-        showNotification("Beklenmedik bir hata oluştu.", true);
+        showNotification(error.message, true);
+        initMap(DEFAULT_LOCATION); // Hata durumunda varsayılan konumu göster
     } finally {
         showLoader(false);
     }
@@ -196,5 +204,5 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // --- INITIAL LOAD ---
   initMap(DEFAULT_LOCATION);
-  showNotification('Çay mı, kahve mi? Seçimini yap!', false, 4000);
+  showNotification('Çay mı, kahve mi? Konumunuzu bulmak için birine dokunun.', false, 4000);
 });
