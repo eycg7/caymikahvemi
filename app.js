@@ -1,12 +1,7 @@
 document.addEventListener('DOMContentLoaded', () => {
-  // --- UYARI: BU BİR TEST SÜRÜMÜDÜR ---
-  // API anahtarı bu dosyada herkese görünür durumdadır.
-  // Bu sürüm sadece sorunun kaynağını teşhis etmek içindir.
-  const FSQ_API_KEY = 'Z3105DXLJEFEVEC4KJBBIRUKGXBVCLKH2V4FZI1JJNQXF0CN'; // <-- LÜTFEN YENİ VE AKTİF ANAHTARINIZI BURAYA GİRİN
-
+  // --- CONFIGURATION ---
+  const API_PROXY_URL = 'https://red-base-2785.ercan-yagci.workers.dev/';
   const DEFAULT_LOCATION = { lat: 39.925533, lon: 32.866287 }; // Ankara, Kızılay
-  const RATING_WEIGHT = 0.4;
-  const DISTANCE_WEIGHT = 0.6;
 
   // --- UI ELEMENTS ---
   const mapElement = document.getElementById('map');
@@ -37,7 +32,7 @@ document.addEventListener('DOMContentLoaded', () => {
     loaderElement.classList.toggle('hidden', !show);
   }
 
-  function showNotification(message, isError = false, duration = 6000) {
+  function showNotification(message, isError = false, duration = 5000) {
     notificationElement.textContent = message;
     notificationElement.className = 'notification show';
     if (isError) {
@@ -65,7 +60,7 @@ document.addEventListener('DOMContentLoaded', () => {
           let errorMessage = 'Konum alınamadı.';
           switch (error.code) {
             case error.PERMISSION_DENIED:
-              errorMessage = 'Konum izni reddedildi. Lütfen tarayıcı ayarlarından bu site için konuma izin verin.';
+              errorMessage = 'Konum izni reddedildi. Lütfen tarayıcı ayarlarından izin verin.';
               break;
             case error.POSITION_UNAVAILABLE:
               errorMessage = 'Konum bilgisi mevcut değil.';
@@ -81,39 +76,27 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // --- DEĞİŞTİRİLDİ: Foursquare'e doğrudan istek atılıyor ---
   async function searchPlaces(query, location) {
     showLoader(true);
-    
-    const searchParams = new URLSearchParams({
-        query: query,
-        ll: `${location.lat},${location.lon}`,
-        radius: 3000,
-        categories: '13032,13035',
-        fields: 'fsq_id,name,geocodes,rating,distance,closed_bucket',
-        sort: 'RELEVANCE',
-        limit: 30
-    });
-
-    const fsq_url = `https://api.foursquare.com/v3/places/search?${searchParams.toString()}`;
-
     try {
-      const response = await fetch(fsq_url, {
-        method: 'GET', // Metod GET olarak değiştirildi
-        headers: { 
-            'Content-Type': 'application/json',
-            'Authorization': FSQ_API_KEY // Anahtar doğrudan başlığa eklendi
-        }
+      const response = await fetch(API_PROXY_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          query: query, // 'cafe' veya 'tea_room' olarak gönderilecek
+          lat: location.lat,
+          lon: location.lon
+        })
       });
       
       const data = await response.json();
-      console.log('Doğrudan Foursquare Yanıtı:', data);
+      console.log('Overpass API Yanıtı:', data);
 
-      if (!response.ok || data.message) {
-        throw new Error(data.message || 'Bilinmeyen Foursquare hatası');
+      if (data.error) {
+        throw new Error(data.message);
       }
       
-      return data.results || [];
+      return data.elements || [];
 
     } catch (error) {
       console.error('Mekanlar aranırken hata oluştu:', error);
@@ -123,20 +106,8 @@ document.addEventListener('DOMContentLoaded', () => {
       showLoader(false);
     }
   }
-
-  function rankPlaces(places) {
-    if (!places || places.length === 0) return [];
-    const maxDistance = Math.max(...places.map(p => p.distance), 1);
-    return places
-      .map(place => {
-        const normalizedRating = (place.rating || 5) / 10;
-        const normalizedDistance = 1 - (place.distance / maxDistance);
-        const score = (normalizedRating * RATING_WEIGHT) + (normalizedDistance * DISTANCE_WEIGHT);
-        return { ...place, score };
-      })
-      .sort((a, b) => b.score - a.score);
-  }
-
+  
+  // OSM'den gelen veriyi haritada göstermek için fonksiyon
   function renderPlaces(places, userLocation) {
     markers.forEach(marker => map.removeLayer(marker));
     markers = [];
@@ -157,26 +128,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const latLngs = [[userLocation.lat, userLocation.lon]];
 
-    places.slice(0, 10).forEach((place, index) => {
+    places.slice(0, 20).forEach((place, index) => { // En yakın 20 mekanı göster
+      // OSM verisi Foursquare'den farklıdır, konumu doğru yerden almalıyız.
       const location = {
-        lat: place.geocodes.main.latitude,
-        lon: place.geocodes.main.longitude
+        lat: place.lat || place.center.lat,
+        lon: place.lon || place.center.lon
       };
       latLngs.push([location.lat, location.lon]);
       
-      let statusHtml = '';
-      if (place.closed_bucket === 'LIKELY_CLOSED' || place.closed_bucket === 'VERY_LIKELY_CLOSED') {
-        statusHtml = '🔴 <b>Durum:</b> Muhtemelen Kapalı';
-      } else {
-        statusHtml = '🟢 <b>Durum:</b> Açık';
-      }
+      const name = place.tags && place.tags.name ? place.tags.name : 'İsimsiz Mekan';
 
       const popupContent = `
         <div style="font-family: sans-serif; line-height: 1.5;">
-          <strong style="font-size: 1.1em;">${index + 1}. ${place.name}</strong><br>
-          ${statusHtml}<br>
-          ⭐ <b>Puan:</b> ${place.rating ? place.rating.toFixed(1) : 'N/A'} / 10<br>
-          🚶 <b>Mesafe:</b> ${place.distance}m<br>
+          <strong style="font-size: 1.1em;">${name}</strong><br>
           <a href="https://www.google.com/maps?daddr=${location.lat},${location.lon}" target="_blank">Yol Tarifi Al</a>
         </div>
       `;
@@ -187,27 +151,28 @@ document.addEventListener('DOMContentLoaded', () => {
     map.fitBounds(L.latLngBounds(latLngs), { padding: [50, 50] });
   }
 
+  // --- EVENT LISTENERS ---
   async function handleFind(query) {
     showLoader(true);
     try {
-      const location = await getUserLocation();
-      initMap(location);
-      const places = await searchPlaces(query, location);
-      if (places.length > 0) {
-        const rankedPlaces = rankPlaces(places);
-        renderPlaces(rankedPlaces, location);
-      }
+        const location = await getUserLocation();
+        initMap(location);
+        // OSM'in anladığı etiketleri gönderiyoruz: 'cafe' veya 'tea_room'
+        const osmQuery = query === 'coffee' ? 'cafe' : 'tea_room';
+        const places = await searchPlaces(osmQuery, location);
+        renderPlaces(places, location);
     } catch(error) {
-      showNotification(error.message, true);
-      initMap(DEFAULT_LOCATION);
+        showNotification(error.message, true);
+        initMap(DEFAULT_LOCATION);
     } finally {
-      showLoader(false);
+        showLoader(false);
     }
   }
 
   btnCoffee.addEventListener('click', () => handleFind('coffee'));
   btnTea.addEventListener('click', () => handleFind('tea'));
 
+  // --- PWA Service Worker ---
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
       navigator.serviceWorker.register('/caymikahvemi/sw.js')
@@ -216,6 +181,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  // --- INITIAL LOAD ---
   initMap(DEFAULT_LOCATION);
   showNotification('Çay mı, kahve mi? Konumunuzu bulmak için birine dokunun.', false, 4000);
 });
